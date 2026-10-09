@@ -1,12 +1,12 @@
-# Roteiro de Prática: Assinatura Digital de Documentos com OpenSSL
+# Roteiro de Prática: Assinatura Digital e Certificado Autoassinado com OpenSSL
 
 ## 1. Tema
 
-Assinatura digital de documentos utilizando o OpenSSL no Linux.
+Assinatura digital de documentos e criação de um certificado digital autoassinado utilizando OpenSSL no Linux.
 
 ## 2. Objetivo
 
-Compreender como funciona a assinatura digital, utilizando chaves criptográficas para assinar um documento e verificar sua autenticidade e integridade.
+Compreender o funcionamento da assinatura digital, gerar chaves criptográficas, criar um certificado autoassinado e verificar a integridade de um documento.
 
 ## 3. Materiais necessários
 
@@ -43,7 +43,7 @@ openssl genpkey -algorithm RSA \
 -pkeyopt rsa_keygen_bits:2048
 ```
 
-Proteger o arquivo da chave privada:
+Proteger a chave privada:
 
 ```bash
 chmod 600 chave_privada.pem
@@ -64,15 +64,75 @@ openssl dgst -sha256 \
 -out assinatura.bin documento.txt
 ```
 
-Esse comando gera uma assinatura digital para o documento utilizando a chave privada.
+Esse comando cria uma assinatura digital do documento utilizando a chave privada.
+
+### Passo 6 — Criar um certificado autoassinado
+
+```bash
+openssl req -new -x509 \
+-key chave_privada.pem \
+-out certificado.pem \
+-sha256 -days 365
+```
+
+O OpenSSL solicitará informações como país, estado, cidade e nome da organização. Preencha os campos solicitados conforme necessário.
+
+O arquivo `certificado.pem` será criado com validade de 365 dias e assinado pela própria chave privada.
+
+**Observação:** um certificado autoassinado não é automaticamente confiável para outros computadores ou aplicações, pois não foi assinado por uma Autoridade Certificadora confiável.
+
+### Passo 7 — Verificar o certificado
+
+```bash
+openssl x509 -in certificado.pem -text -noout
+```
+
+Esse comando exibe as informações do certificado, incluindo o titular, o emissor e o período de validade.
+
+Como o certificado é autoassinado, o titular (*Subject*) e o emissor (*Issuer*) normalmente serão iguais.
+
+### Passo 8 — Verificar a assinatura do documento
+
+```bash
+openssl dgst -sha256 \
+-verify chave_publica.pem \
+-signature assinatura.bin documento.txt
+```
+
+Se o documento não tiver sido alterado, o resultado esperado será:
+
+```text
+Verified OK
+```
+
+### Passo 9 — Testar a integridade do documento
+
+Altere o conteúdo do documento:
+
+```bash
+echo "Conteúdo modificado." >> documento.txt
+```
+
+Execute novamente a verificação:
+
+```bash
+openssl dgst -sha256 \
+-verify chave_publica.pem \
+-signature assinatura.bin documento.txt
+```
+
+A verificação deverá falhar, pois o conteúdo do documento foi alterado depois da assinatura.
 
 ## 5. Resultados esperados
 
-Ao final desta etapa, deverão existir os seguintes arquivos:
+Ao concluir a prática, deverão existir os seguintes arquivos:
 
-- `documento.txt` — documento original.
-- `chave_privada.pem` — chave privada utilizada para assinar.
-- `chave_publica.pem` — chave pública utilizada para verificar a assinatura.
-- `assinatura.bin` — arquivo contendo a assinatura digital do documento.
+| Arquivo | Finalidade |
+|---|---|
+| `documento.txt` | Documento que será assinado. |
+| `chave_privada.pem` | Chave privada utilizada para assinar o documento e gerar o certificado. |
+| `chave_publica.pem` | Chave pública utilizada para verificar a assinatura. |
+| `assinatura.bin` | Arquivo que contém a assinatura digital. |
+| `certificado.pem` | Certificado digital autoassinado que contém a chave pública e os dados do titular. |
 
-A assinatura permite verificar se o documento permaneceu íntegro e se corresponde à assinatura produzida pela chave privada utilizada.
+Espera-se que a assinatura seja validada quando o documento estiver intacto e que a verificação falhe após a alteração do conteúdo.
